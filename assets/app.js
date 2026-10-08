@@ -1,6 +1,8 @@
-/* Paintball Preservation Port progress site. Generated; do not edit by hand. No tracking, no network requests. */
+/* Paintball Preservation Port progress site. Generated from a template. No tracking, no network requests. */
 (function () {
   var root = document.documentElement;
+
+  /* ---- theme toggle (system default, remembered per browser when chosen) */
   var btn = document.getElementById('theme-toggle');
   var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function mode() { var t = root.getAttribute('data-theme'); return t ? t : (mq && mq.matches ? 'dark' : 'light'); }
@@ -18,6 +20,36 @@
   if (mq) { try { mq.addEventListener('change', sync); } catch (e) {} }
   sync();
 
+  /* ---- bars fill in when they scroll into view (CSS turns this off for reduced motion) */
+  var reveal = [].slice.call(document.querySelectorAll('.reveal'));
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    reveal.forEach(function (el) { io.observe(el); });
+  } else {
+    reveal.forEach(function (el) { el.classList.add('is-in'); });
+  }
+
+  /* ---- highlight the section in view in the top navigation */
+  var links = [].slice.call(document.querySelectorAll('.nav a[href^="#"]'));
+  if ('IntersectionObserver' in window && links.length) {
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+    var navIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        links.forEach(function (a) { a.removeAttribute('aria-current'); });
+        var a = byId[e.target.id];
+        if (a) a.setAttribute('aria-current', 'true');
+      });
+    }, { rootMargin: '-40% 0px -55% 0px' });
+    Object.keys(byId).forEach(function (id) { var s = document.getElementById(id); if (s) navIo.observe(s); });
+  }
+
+  /* ---- task board filters */
   var cards = [].slice.call(document.querySelectorAll('.task'));
   var groups = [].slice.call(document.querySelectorAll('.ws-group'));
   var chips = [].slice.call(document.querySelectorAll('.chip[data-status]'));
@@ -27,6 +59,7 @@
   var count = document.getElementById('f-count');
   var empty = document.getElementById('f-empty');
   var expand = document.getElementById('f-expand');
+  if (!sel) return;
   function on(el) { return el.getAttribute('aria-pressed') === 'true'; }
   function filtered() {
     return chips.some(function (c) { return !on(c); }) || on(runBtn) || sel.value !== 'all' || q.value.trim() !== '';
@@ -68,12 +101,13 @@
   expand.addEventListener('click', function () { setExpand(!on(expand)); });
   document.getElementById('f-reset').addEventListener('click', function () { reset(); apply(); });
   document.addEventListener('click', function (e) {
-    var a = e.target.closest ? e.target.closest('[data-filter-ws],[data-filter-status]') : null;
+    var a = e.target.closest ? e.target.closest('[data-filter-ws],[data-filter-status],[data-filter-running]') : null;
     if (!a) return;
     e.preventDefault(); reset();
     var ws = a.getAttribute('data-filter-ws'), st = a.getAttribute('data-filter-status');
     if (ws) sel.value = ws;
     if (st) chips.forEach(function (c) { c.setAttribute('aria-pressed', c.getAttribute('data-status') === st ? 'true' : 'false'); });
+    if (a.hasAttribute('data-filter-running')) runBtn.setAttribute('aria-pressed', 'true');
     apply();
     document.getElementById('board').scrollIntoView();
   });
